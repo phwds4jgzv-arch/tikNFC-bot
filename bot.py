@@ -376,7 +376,7 @@ async def cmd_start(m: Message):
     save_user(m.from_user)
     await m.answer(
         f"👋 Привет, <b>{m.from_user.first_name}</b>!\n\n"
-        "Я бот подписки на ведение ваших NFC-страниц.\n\n"
+        "Я бот для управления вашей подписки.\n\n"
         "✅ Обновляем меню и акции\n"
         "✅ Присылаем отчёт с цифрами каждый месяц\n"
         f"✅ За {REMINDER_DAYS} дня предупреждаем о списании\n"
