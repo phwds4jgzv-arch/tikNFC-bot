@@ -1,3 +1,4 @@
 aiogram>=3.7
 yookassa>=3.0
 python-dotenv>=1.0
+flask>=3.0
