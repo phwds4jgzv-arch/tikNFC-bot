@@ -489,7 +489,7 @@ async def _watch_payment(bot, user_id, payment_id, plan_key, chat_id):
         await bot.send_message(chat_id, "❌ Платёж отменён.")
         return
 
-           set_payment_status(payment_id, "succeeded")
+    set_payment_status(payment_id, "succeeded")
     pm_id = getattr(p.payment_method, "id", None)
     sub_id = create_subscription(user_id, plan_key, pm_id)
     plan = PLANS[plan_key]
@@ -511,13 +511,6 @@ async def _watch_payment(bot, user_id, payment_id, plan_key, chat_id):
         )
 
     await bot.send_message(chat_id, text)
-        chat_id,
-        f"🎉 <b>Подписка активирована!</b>\n\n"
-        f"Тариф: {plan['name']}\n"
-        f"Следующее списание: <b>{next_date}</b>\n"
-        f"Напоминание придёт: <b>{reminder}</b>\n\n"
-        "Отменить можно через «Моя подписка» в любой момент."
-    )
 
     try:
         await bot.send_message(
