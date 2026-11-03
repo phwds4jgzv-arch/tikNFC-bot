@@ -40,23 +40,42 @@ DB_PATH       = "bot.db"
 REMINDER_DAYS = 2
 
 PLANS = {
-    "base": {
-        "name": "🟢 Бай",
-        "price": 1500,
-        "desc": "Единоразовое обновление сайта"
-        "Настройка воронки отзывов"
-        "Интеграция системы аналитики «Метрика»"
-        "Создание кастомного сайта для направления NFC"
+    "test": {
+        "name": "🧪 Тестовая",
+        "price": 2500, 
+        "is_recurrent": False,  # 👈 Отключаем автопродление
+        "desc": (
+            "✅ Единоразовое обновление сайта\n"
+            "✅ Настройка воронки отзывов\n"
+            "✅ Интеграция системы аналитики «Метрика»\n"
+            "✅ Создание кастомного сайта для NFC\n\n"
+            "<i>Внимание: это разовый платеж за 1 месяц. Без автопродления.</i>"
+        )
     },
     "standard": {
         "name": "🟣 Стандарт",
-        "price": 2500,
-        "desc": "Всё из Базового + ежемесячный отчёт с цифрами"
+        "price": 5000, 
+        "is_recurrent": True,   # 👈 Включаем автопродление
+        "desc": (
+            "✅ Два ежемесячных обновления сайта (акции, контент)\n"
+            "✅ Настройка воронки отзывов\n"
+            "✅ Интеграция «Метрика» (расширенная аналитика)\n"
+            "✅ Создание кастомного сайта для NFC\n"
+            "✅ Мониторинг отзывов"
+        )
     },
-    "premium": {
-        "name": "🟡 Премиум",
-        "price": 3500,
-        "desc": "Всё из Стандарта + сезонный редизайн + приоритет"
+    "extended": {
+        "name": "🟡 Расширенная",
+        "price": 7000, 
+        "is_recurrent": True,   # 👈 Включаем автопродление
+        "desc": (
+            "✅ <b>Неограниченное</b> количество обновлений сайта\n"
+            "✅ Настройка воронки отзывов\n"
+            "✅ Интеграция «Метрика» (расширенная аналитика)\n"
+            "✅ Создание кастомного сайта для NFC\n"
+            "✅ Мониторинг отзывов\n"
+            "✅ <b>Приоритетное обслуживание</b> (менеджеры по запросам)"
+        )
     },
 }
 
@@ -276,12 +295,11 @@ def create_initial_payment(user_id, plan_key):
         "amount": {"value": f"{plan['price']:.2f}", "currency": "RUB"},
         "capture": True,
         "confirmation": {"type": "redirect", "return_url": RETURN_URL},
-        "save_payment_method": True,
-        "description": f"Подписка {plan['name']} — 1-й месяц",
+        "save_payment_method": plan["is_recurrent"],  # 👈 Сохраняем карту только если это подписка
+        "description": f"Оплата тарифа {plan['name']}",
         "metadata": {"user_id": user_id, "plan": plan_key}
     }, str(uuid.uuid4()))
-    save_payment(user_id, payment.id, None, plan["price"],
-                 payment.status, "initial")
+    save_payment(user_id, payment.id, None, plan["price"], payment.status, "initial")
     return payment
 
 
@@ -383,7 +401,6 @@ async def cmd_start(m: Message):
         "✅ Создание кастомного сайта для направления NFC\n"
         "✅ Присылаем отчёт с цифрами каждый месяц\n"
         "✅ Настраиваем воронку отзывов и мониторим их\n"
-        f"✅ За {REMINDER_DAYS} дня предупреждаем о списании\n"
         "✅ Отмена — в один клик\n\n"
         "Выбери действие 👇",
         reply_markup=kb_main()
@@ -472,15 +489,28 @@ async def _watch_payment(bot, user_id, payment_id, plan_key, chat_id):
         await bot.send_message(chat_id, "❌ Платёж отменён.")
         return
 
-    set_payment_status(payment_id, "succeeded")
+       set_payment_status(payment_id, "succeeded")
     pm_id = getattr(p.payment_method, "id", None)
     sub_id = create_subscription(user_id, plan_key, pm_id)
     plan = PLANS[plan_key]
-    next_date = (datetime.now() + timedelta(days=30)).strftime("%d.%m.%Y")
-    reminder = (datetime.now() +
-                timedelta(days=30 - REMINDER_DAYS)).strftime("%d.%m.%Y")
+    
+    if plan["is_recurrent"]:
+        next_date = (datetime.now() + timedelta(days=30)).strftime("%d.%m.%Y")
+        text = (
+            f"🎉 <b>Подписка активирована!</b>\n\n"
+            f"Тариф: {plan['name']}\n"
+            f"Следующее списание: <b>{next_date}</b>\n\n"
+            "Отменить можно через «Моя подписка» в любой момент."
+        )
+    else:
+        text = (
+            f"🎉 <b>Тестовый доступ активирован!</b>\n\n"
+            f"Тариф: {plan['name']}\n"
+            "Оплачен 1 месяц. <b>Автопродления не будет.</b>\n\n"
+            "Спасибо, что решили попробовать!"
+        )
 
-    await bot.send_message(
+    await bot.send_message(chat_id, text)
         chat_id,
         f"🎉 <b>Подписка активирована!</b>\n\n"
         f"Тариф: {plan['name']}\n"
@@ -715,6 +745,9 @@ async def charge_due(bot: Bot):
     count = 0
     for s in subs:
         try:
+            if not PLANS[s["plan"]].get("is_recurrent", True):
+                continue
+                
             if not s["payment_method_id"]:
                 continue
             p = create_recurring_payment(
