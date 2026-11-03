@@ -489,12 +489,12 @@ async def _watch_payment(bot, user_id, payment_id, plan_key, chat_id):
         await bot.send_message(chat_id, "❌ Платёж отменён.")
         return
 
-       set_payment_status(payment_id, "succeeded")
+           set_payment_status(payment_id, "succeeded")
     pm_id = getattr(p.payment_method, "id", None)
     sub_id = create_subscription(user_id, plan_key, pm_id)
     plan = PLANS[plan_key]
     
-    if plan["is_recurrent"]:
+    if plan.get("is_recurrent", True):
         next_date = (datetime.now() + timedelta(days=30)).strftime("%d.%m.%Y")
         text = (
             f"🎉 <b>Подписка активирована!</b>\n\n"
