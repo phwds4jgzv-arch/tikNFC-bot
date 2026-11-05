@@ -434,11 +434,15 @@ async def cb_back(c: CallbackQuery):
 async def cb_plans(c: CallbackQuery):
     text = (
         "💎 <b>Тарифы подписки</b>\n\n"
+        "Выберите подходящий тариф для вашего заведения:\n\n"
+        # 👇 Мы добавляем условие if k != "network", чтобы бот не искал цену у сети
         + "\n\n".join(
             f"{p['name']} — <b>{p['price']} ₽/мес</b>\n{p['desc']}"
-            for p in PLANS.values()
+            for k, p in PLANS.items() if k != "network"
         )
-        + "\n\nВыбери тариф:"
+        + "\n\n"
+        "🏢 <b>Для сетей от 3 точек</b> — 5000 ₽/точка\n\n"
+        "<i>Нажмите на тариф ниже, чтобы узнать, что входит:</i>"
     )
     await c.message.edit_text(text, reply_markup=kb_plans())
     await c.answer()
