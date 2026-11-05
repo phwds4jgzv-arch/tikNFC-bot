@@ -43,8 +43,8 @@ REMINDER_DAYS = 2
 PLANS = {
     "test": {
         "name": "🧪 Тестовая",
-        "price": 2500, 
-        "is_recurrent": False,  # 👈 Отключаем автопродление
+        "price": 2500,
+        "is_recurrent": False,  # Разовый платеж
         "desc": (
             "✅ Единоразовое обновление сайта\n"
             "✅ Настройка воронки отзывов\n"
@@ -55,12 +55,11 @@ PLANS = {
     },
     "standard": {
         "name": "🟣 Стандарт",
-        "price": 5000, 
-        "is_recurrent": True,   # 👈 Включаем автопродление
+        "price": 5000,
+        "is_recurrent": True,   # Автопродление
         "desc": (
             "✅ Два ежемесячных обновления сайта (акции, контент)\n"
             "✅ Настройка воронки отзывов\n"
-            "✅ Настройка системы лояльности\n"
             "✅ Интеграция «Метрика» (расширенная аналитика)\n"
             "✅ Создание кастомного сайта для NFC\n"
             "✅ Мониторинг отзывов"
@@ -68,19 +67,24 @@ PLANS = {
     },
     "extended": {
         "name": "🟡 Расширенная",
-        "price": 7000, 
-        "is_recurrent": True,   # 👈 Включаем автопродление
+        "price": 7000,
+        "is_recurrent": True,   # Автопродление
         "desc": (
             "✅ <b>Неограниченное</b> количество обновлений сайта\n"
             "✅ Настройка воронки отзывов\n"
-            "✅ Настройка системы лояльности\n"
             "✅ Интеграция «Метрика» (расширенная аналитика)\n"
             "✅ Создание кастомного сайта для NFC\n"
-            "✅ Создание pdf меню\n"
             "✅ Мониторинг отзывов\n"
+            "✅ Создание кастомного pdf меню\n"
             "✅ <b>Приоритетное обслуживание</b> (менеджеры по запросам)"
         )
     },
+    "network": {
+        "name": "🏢 Сеть (от 3 точек)",
+        "price_per_point": 5000, # Цена за одну точку
+        "is_recurrent": True,
+        "desc": "Единая подписка на все ваши заведения. Скидка за объем."
+    }
 }
 
 logging.basicConfig(
@@ -276,16 +280,22 @@ def get_stats():
     active = c.execute(
         "SELECT COUNT(*) FROM subscriptions WHERE status = 'active'"
     ).fetchone()[0]
+    
     revenue = c.execute(
         "SELECT COALESCE(SUM(amount),0) FROM payments WHERE status = 'succeeded'"
     ).fetchone()[0]
-    mrr = c.execute(
-        "SELECT COALESCE(SUM(CASE plan "
-        "WHEN 'base' THEN 1500 "
-        "WHEN 'standard' THEN 2500 "
-        "WHEN 'premium' THEN 3500 END),0) "
-        "FROM subscriptions WHERE status = 'active'"
-    ).fetchone()[0]
+    
+    # Считаем MRR (ежемесячный доход) в Python, чтобы учесть сети
+    subs = c.execute("SELECT plan FROM subscriptions WHERE status = 'active'").fetchall()
+    mrr = 0
+    for row in subs:
+        plan = row[0]
+        if plan.startswith("network_"):
+            points = int(plan.split("_")[1])
+            mrr += points * PLANS["network"]["price_per_point"]
+        elif plan in PLANS:
+            mrr += PLANS[plan]["price"]
+            
     c.close()
     return {"active": active, "revenue": revenue, "mrr": mrr}
 
