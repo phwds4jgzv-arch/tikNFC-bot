@@ -367,8 +367,6 @@ def kb_main():
 
 def kb_plans():
     rows = []
-    
-    # Проходим по всем тарифам, КРОМЕ сети
     for k, p in PLANS.items():
         if k == "network":
             continue
@@ -377,7 +375,6 @@ def kb_plans():
             callback_data=f"plan:{k}"
         )])
     
-    # Отдельно добавляем кнопку для сети
     network_plan = PLANS["network"]
     rows.append([
         InlineKeyboardButton(
@@ -441,7 +438,21 @@ async def cmd_start(m: Message):
     )
 
 
-@router.callback_query(F.data.startswith("plan:"))
+@router.callback_query(F.data == "plans")
+async def cb_plans(c: CallbackQuery):
+    text = (
+        "💎 <b>Тарифы подписки</b>\n\n"
+        "Выберите подходящий тариф для вашего заведения:\n\n"
+        + "\n\n".join(
+            f"{p['name']} — <b>{p['price']} ₽/мес</b>\n{p['desc']}"
+            for k, p in PLANS.items() if k != "network"
+        )
+        + "\n\n🏢 <b>Для сетей от 3 точек</b> — 5000 ₽/точка\n\n"
+        "<i>Нажмите на тариф ниже, чтобы узнать, что входит:</i>"
+    )
+    await c.message.edit_text(text, reply_markup=kb_plans())
+    await c.answer()
+    
 async def cb_plan(c: CallbackQuery, state: FSMContext):
     key = c.data.split(":", 1)[1]
     
