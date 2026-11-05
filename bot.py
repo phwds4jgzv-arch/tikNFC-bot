@@ -354,7 +354,6 @@ def kb_main():
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="💎 Тарифы и подписка", callback_data="plans")],
         
-        # 👇 ВОТ ЗДЕСЬ МАГИЯ: вместо callback_data мы используем web_app
         [InlineKeyboardButton(
             text="📊 Моя подписка", 
             web_app=WebAppInfo(url="https://telegram-web-app-tik.netlify.app/tma.html")
@@ -933,6 +932,65 @@ async def reminder_loop(bot: Bot):
             log.exception(f"reminder_loop: {e}")
         await asyncio.sleep(3600)
 
+# ═══════════════════════════════════════════════════════════
+# ФУНКЦИИ ДЛЯ СЕТИ И ОТМЕНЫ
+# ═══════════════════════════════════════════════════════════
+
+@router.callback_query(F.data == "back")
+async def cb_back(c: CallbackQuery, state: FSMContext):
+    await state.clear()
+    await c.message.edit_text(
+        "🏠 <b>Главное меню</b>", 
+        reply_markup=kb_main()
+    )
+    await c.answer()
+
+
+@router.callback_query(F.data == "pay_network")
+async def cb_pay_network(c: CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    total_price = data.get('total_price')
+    points = data.get('points')
+    
+    if not total_price:
+        await c.answer("Ошибка. Выберите тариф заново.", show_alert=True)
+        return
+        
+    await c.answer("Создаю платёж...")
+    
+    try:
+        payment = create_custom_payment(c.from_user.id, "network", total_price, points)
+    except Exception as e:
+        log.exception("Payment create error")
+        await c.message.edit_text(f"❌ Ошибка: {e}")
+        return
+
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="💳 Оплатить", url=payment.confirmation.confirmation_url)],
+    ])
+    await c.message.edit_text(
+        f"💳 <b>Счёт на {total_price} ₽</b>\n\n"
+        "1. Нажми «Оплатить»\n"
+        "2. Оплати картой\n"
+        "3. Вернись сюда — активирую подписку.",
+        reply_markup=kb
+    )
+    
+    asyncio.create_task(_watch_payment(c.bot, c.from_user.id, payment.id, f"network_{points}", c.message.chat.id))
+
+
+def create_custom_payment(user_id, plan_key, amount, points):
+    plan = PLANS[plan_key]
+    payment = YKPayment.create({
+        "amount": {"value": f"{amount:.2f}", "currency": "RUB"},
+        "capture": True,
+        "confirmation": {"type": "redirect", "return_url": RETURN_URL},
+        "save_payment_method": True,
+        "description": f"Подписка Сеть ({points} точек)",
+        "metadata": {"user_id": user_id, "plan": f"{plan_key}_{points}"}
+    }, str(uuid.uuid4()))
+    save_payment(user_id, payment.id, None, amount, payment.status, "initial")
+    return payment
 
 # ═══════════════════════════════════════════════════════════
 # 🚀 ЗАПУСК
