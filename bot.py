@@ -557,6 +557,7 @@ async def process_network_points(m: Message, state: FSMContext):
         [InlineKeyboardButton(text="⬅️ Отмена", callback_data="back")]
     ])
     
+    # Отправляем сообщение с кнопками
     await m.answer(text, reply_markup=kb)
     await state.clear()
 
