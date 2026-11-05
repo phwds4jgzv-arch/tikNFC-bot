@@ -95,6 +95,11 @@ log = logging.getLogger(__name__)
 
 router = Router()
 
+from aiogram.fsm.state import State, StatesGroup
+
+class NetworkStates(StatesGroup):
+    waiting_for_points = State()
+
 
 # ═══════════════════════════════════════════════════════════
 # 💾 БАЗА ДАННЫХ
