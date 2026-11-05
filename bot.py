@@ -362,12 +362,26 @@ def kb_main():
 
 
 def kb_plans():
-    rows = [
-        [InlineKeyboardButton(
+    rows = []
+    
+    # Проходим по всем тарифам, КРОМЕ сети
+    for k, p in PLANS.items():
+        if k == "network":
+            continue
+        rows.append([InlineKeyboardButton(
             text=f"{p['name']} — {p['price']} ₽/мес",
             callback_data=f"plan:{k}"
-        )] for k, p in PLANS.items()
-    ]
+        )])
+    
+    # Отдельно добавляем кнопку для сети
+    network_plan = PLANS["network"]
+    rows.append([
+        InlineKeyboardButton(
+            text=f"🏢 {network_plan['name']} — {network_plan['price_per_point']} ₽/точка", 
+            callback_data="plan:network"
+        )
+    ])
+    
     rows.append([InlineKeyboardButton(text="⬅️ Назад", callback_data="back")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
