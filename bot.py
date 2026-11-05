@@ -76,7 +76,7 @@ PLANS = {
             "✅ Интеграция «Метрика» (расширенная аналитика)\n"
             "✅ Создание кастомного сайта для NFC\n"
             "✅ Мониторинг отзывов\n"
-            "✅ Создание кастомного pdf меню\n"
+            "✅ Создание кастомного pdf меню для вас\n"
             "✅ <b>Приоритетное обслуживание</b> (менеджеры по запросам)"
         )
     },
@@ -519,7 +519,7 @@ async def cb_plan(c: CallbackQuery, state: FSMContext):
     await c.answer()
 
 
-    @router.message(NetworkStates.waiting_for_points)
+@router.message(NetworkStates.waiting_for_points)
 async def process_network_points(m: Message, state: FSMContext):
     if not m.text.isdigit():
         await m.answer("⚠️ Пожалуйста, отправьте просто число (например: 5).")
