@@ -441,12 +441,31 @@ async def cmd_start(m: Message):
     )
 
 
-@router.callback_query(F.data == "back")
-async def cb_back(c: CallbackQuery):
-    await c.message.edit_text("🏠 <b>Главное меню</b>",
-                              reply_markup=kb_main())
-    await c.answer()
+@router.callback_query(F.data.startswith("plan:"))
+async def cb_plan(c: CallbackQuery, state: FSMContext):
+    key = c.data.split(":", 1)[1]
+    
+    # Если выбрали Сеть
+    if key == "network":
+        await c.message.edit_text(
+            "🏢 <b>Тариф Сеть</b>\n\n"
+            "Напишите цифрой, <b>сколько у вас точек/заведений</b>? (минимум 3)\n\n"
+            "Например: <code>13</code>"
+        )
+        await state.set_state(NetworkStates.waiting_for_points)
+        await c.answer()
+        return
 
+    p = PLANS[key]
+    text = (
+        f"{p['name']}\n\n{p['desc']}\n\n"
+        f"💰 <b>{p['price']} ₽/мес</b>\n\n"
+        "✅ Первый платёж — сейчас\n"
+        "✅ Далее списание раз в 30 дней\n"
+        "✅ Отменить можно в любой момент"
+    )
+    await c.message.edit_text(text, reply_markup=kb_plan_details(key))
+    await c.answer()
 
 @router.callback_query(F.data == "plans")
 async def cb_plans(c: CallbackQuery):
@@ -472,34 +491,34 @@ async def cb_plans(c: CallbackQuery):
     await c.answer()
 
     @router.message(NetworkStates.waiting_for_points)
-    async def process_network_points(m: Message, state: FSMContext):
-        if not m.text.isdigit():
-            await m.answer("⚠️ Пожалуйста, отправьте просто число (например: 5).")
-            return
+async def process_network_points(m: Message, state: FSMContext):
+    if not m.text.isdigit():
+        await m.answer("⚠️ Пожалуйста, отправьте просто число (например: 5).")
+        return
 
-        points = int(m.text)
-        if points < 3:
-            await m.answer("⚠️ Минимальное количество для тарифа Сеть — 3 точки.")
-            return
+    points = int(m.text)
+    if points < 3:
+        await m.answer("⚠️ Минимальное количество для тарифа Сеть — 3 точки.")
+        return
 
-        total_price = points * PLANS['network']['price_per_point']
-        await state.update_data(points=points, total_price=total_price)
-        
-        text = (
-            f"🏢 <b>Расчет для сети</b>\n\n"
-            f"Количество точек: <b>{points}</b>\n"
-            f"Цена за точку: <b>{PLANS['network']['price_per_point']} ₽</b>\n"
-            f"Итого: <b>{total_price} ₽/мес</b>\n\n"
-            "Нажмите кнопку ниже, чтобы перейти к оплате."
-        )
-        
-        kb = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text=f"💳 Оплатить {total_price} ₽", callback_data="pay_network")],
-            [InlineKeyboardButton(text="⬅️ Отмена", callback_data="back")]
-        ])
-        
-        await m.answer(text, reply_markup=kb)
-        await state.clear()
+    total_price = points * PLANS['network']['price_per_point']
+    await state.update_data(points=points, total_price=total_price)
+    
+    text = (
+        f"🏢 <b>Расчет для сети</b>\n\n"
+        f"Количество точек: <b>{points}</b>\n"
+        f"Цена за точку: <b>{PLANS['network']['price_per_point']} ₽</b>\n"
+        f"Итого: <b>{total_price} ₽/мес</b>\n\n"
+        "Нажмите кнопку ниже, чтобы перейти к оплате."
+    )
+    
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text=f"💳 Оплатить {total_price} ₽", callback_data="pay_network")],
+        [InlineKeyboardButton(text="⬅️ Отмена", callback_data="back")]
+    ])
+    
+    await m.answer(text, reply_markup=kb)
+    await state.clear()
 
 @router.callback_query(F.data.startswith("pay:"))
 async def cb_pay(c: CallbackQuery):
