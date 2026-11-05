@@ -43,7 +43,7 @@ REMINDER_DAYS = 2
 PLANS = {
     "test": {
         "name": "🧪 Тестовая",
-        "price": 100, 
+        "price": 2500, 
         "is_recurrent": False,  # 👈 Отключаем автопродление
         "desc": (
             "✅ Единоразовое обновление сайта\n"
