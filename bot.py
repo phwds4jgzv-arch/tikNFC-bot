@@ -57,7 +57,7 @@ PLANS = {
     "standard": {
         "name": "🟣 Стандарт",
         "price": 5000,
-        "is_recurrent": True,   # Автопродление
+        "is_recurrent": True,
         "desc": (
             "✅ Два ежемесячных обновления сайта (акции, контент)\n"
             "✅ Настройка воронки отзывов\n"
@@ -69,20 +69,19 @@ PLANS = {
     "extended": {
         "name": "🟡 Расширенная",
         "price": 7000,
-        "is_recurrent": True,   # Автопродление
+        "is_recurrent": True,
         "desc": (
             "✅ <b>Неограниченное</b> количество обновлений сайта\n"
             "✅ Настройка воронки отзывов\n"
             "✅ Интеграция «Метрика» (расширенная аналитика)\n"
             "✅ Создание кастомного сайта для NFC\n"
             "✅ Мониторинг отзывов\n"
-            "✅ Создание кастомного pdf меню для вас\n"
             "✅ <b>Приоритетное обслуживание</b> (менеджеры по запросам)"
         )
     },
     "network": {
         "name": "🏢 Сеть (от 3 точек)",
-        "price_per_point": 5000, # Цена за одну точку
+        "price_per_point": 5000,
         "is_recurrent": True,
         "desc": "Единая подписка на все ваши заведения. Скидка за объем."
     }
@@ -313,13 +312,25 @@ def create_initial_payment(user_id, plan_key):
         "amount": {"value": f"{plan['price']:.2f}", "currency": "RUB"},
         "capture": True,
         "confirmation": {"type": "redirect", "return_url": RETURN_URL},
-        "save_payment_method": plan["is_recurrent"],  # 👈 Сохраняем карту только если это подписка
+        "save_payment_method": False,  # 👈 ВРЕМЕННО FALSE (ждем разблокировки от ЮKassa)
         "description": f"Оплата тарифа {plan['name']}",
         "metadata": {"user_id": user_id, "plan": plan_key}
     }, str(uuid.uuid4()))
     save_payment(user_id, payment.id, None, plan["price"], payment.status, "initial")
     return payment
 
+def create_custom_payment(user_id, plan_key, amount, points):
+    plan = PLANS[plan_key]
+    payment = YKPayment.create({
+        "amount": {"value": f"{amount:.2f}", "currency": "RUB"},
+        "capture": True,
+        "confirmation": {"type": "redirect", "return_url": RETURN_URL},
+        "save_payment_method": False,  # 👈 ВРЕМЕННО FALSE
+        "description": f"Подписка Сеть ({points} точек)",
+        "metadata": {"user_id": user_id, "plan": f"{plan_key}_{points}"}
+    }, str(uuid.uuid4()))
+    save_payment(user_id, payment.id, None, amount, payment.status, "initial")
+    return payment
 
 def create_recurring_payment(user_id, sub_id, plan_key, pm_id):
     plan = PLANS[plan_key]
@@ -608,7 +619,7 @@ async def _watch_payment(bot, user_id, payment_id, plan_key, chat_id):
     pm_id = getattr(p.payment_method, "id", None)
     sub_id = create_subscription(user_id, plan_key, pm_id)
     
-    # 👇 УМНАЯ ПРОВЕРКА ДЛЯ СЕТИ
+    # Проверяем, сеть это или обычный тариф
     if plan_key.startswith("network_"):
         points = int(plan_key.split("_")[1])
         price = points * PLANS["network"]["price_per_point"]
@@ -625,8 +636,7 @@ async def _watch_payment(bot, user_id, payment_id, plan_key, chat_id):
         text = (
             f"🎉 <b>Подписка активирована!</b>\n\n"
             f"Тариф: {name}\n"
-            f"Стоимость: {price} ₽/мес\n"
-            f"Следующее списание: <b>{next_date}</b>\n\n"
+            f"Стоимость: {price} ₽/мес\n\n"
             "Отменить можно через «Моя подписка» в любой момент."
         )
     else:
@@ -643,7 +653,7 @@ async def _watch_payment(bot, user_id, payment_id, plan_key, chat_id):
     try:
         await bot.send_message(
             ADMIN_ID,
-            f"💳 <b>Новая подписка!</b>\n"
+            f"💳 <b>Новая оплата!</b>\n"
             f"User: <code>{user_id}</code>\n"
             f"Тариф: {name} ({price} ₽)"
         )
@@ -972,6 +982,15 @@ async def cb_pay_network(c: CallbackQuery, state: FSMContext):
     )
     
     asyncio.create_task(_watch_payment(c.bot, c.from_user.id, payment.id, f"network_{points}", c.message.chat.id))
+
+@router.callback_query(F.data == "back")
+async def cb_back(c: CallbackQuery, state: FSMContext):
+    await state.clear()
+    await c.message.edit_text(
+        "🏠 <b>Главное меню</b>", 
+        reply_markup=kb_main()
+    )
+    await c.answer()
 
 
 def create_custom_payment(user_id, plan_key, amount, points):
