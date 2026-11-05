@@ -503,17 +503,19 @@ async def cb_plan(c: CallbackQuery, state: FSMContext):
         await c.answer()
         return
 
-    # Для обычных тарифов
-    p = PLANS[key]
-    text = (
-        f"{p['name']}\n\n{p['desc']}\n\n"
-        f"💰 <b>{p['price']} ₽/мес</b>\n\n"
-        "✅ Первый платёж — сейчас\n"
-        "✅ Далее списание раз в 30 дней\n"
-        "✅ Отменить можно в любой момент"
-    )
-    await c.message.edit_text(text, reply_markup=kb_plan_details(key))
-    await c.answer()
+@router.callback_query(F.data.startswith("plan:"))
+async def cb_plan(c: CallbackQuery, state: FSMContext):
+    key = c.data.split(":", 1)[1]
+    
+    # Если выбрали Сеть
+    if key == "network":
+        await c.message.edit_text(
+            "🏢 <b>Тариф Сеть</b>\n\n"
+            "Напишите цифрой, <b>сколько у вас точек/заведений</b>? (минимум 3)\n\n"
+            "Например: <code>13</code>"
+        )
+        await state.set_state(NetworkStates.waiting_for_points)
+        await c.answer()
         return
 
     # Для обычных тарифов
@@ -525,7 +527,8 @@ async def cb_plan(c: CallbackQuery, state: FSMContext):
         "✅ Далее списание раз в 30 дней\n"
         "✅ Отменить можно в любой момент"
     )
-@router.callback_query(F.data.startswith("plan:"))
+    await c.message.edit_text(text, reply_markup=kb_plan_details(key))
+    await c.answer()
 async def cb_plan(c: CallbackQuery, state: FSMContext):
     key = c.data.split(":", 1)[1]
     
