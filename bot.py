@@ -42,7 +42,7 @@ REMINDER_DAYS = 2
 PLANS = {
     "test": {
         "name": "🧪 Тестовая",
-        "price": 2500, 
+        "price": 100, 
         "is_recurrent": False,  # 👈 Отключаем автопродление
         "desc": (
             "✅ Единоразовое обновление сайта\n"
@@ -605,7 +605,7 @@ async def cb_offer(c: CallbackQuery):
         "4. Оплата: автоматическое списание раз в 30 дней\n"
         "5. Отмена: в любой момент в боте\n"
         "6. Акцепт оферты = оплата подписки\n\n"
-        "<i>Полный текст: [ссылка на PDF]</i>",
+        "<i>Полный текст: [https://telegra.ph/Publichnaya-oferta-na-okazanie-uslug-11-05-2]</i>",
         reply_markup=kb_main()
     )
     await c.answer()
