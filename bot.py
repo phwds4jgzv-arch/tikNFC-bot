@@ -552,11 +552,10 @@ async def process_network_points(m: Message, state: FSMContext):
     )
     
     kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text=f"💳 Оплатить {total_price} ₽", callback_data="pay_network")],
+        [InlineKeyboardButton(text=f"💳 Оплатить {total_price} ₽", callback_data=f"pay_network:{points}")],
         [InlineKeyboardButton(text="⬅️ Отмена", callback_data="back")]
     ])
     
-    # Отправляем сообщение с кнопками
     await m.answer(text, reply_markup=kb)
     await state.clear()
 
@@ -946,16 +945,12 @@ async def cb_back(c: CallbackQuery, state: FSMContext):
     await c.answer()
 
 
-@router.callback_query(F.data == "pay_network")
+@router.callback_query(F.data.startswith("pay_network:"))
 async def cb_pay_network(c: CallbackQuery, state: FSMContext):
-    data = await state.get_data()
-    total_price = data.get('total_price')
-    points = data.get('points')
+    # Достаем количество точек прямо из кнопки
+    points = int(c.data.split(":")[1])
+    total_price = points * PLANS['network']['price_per_point']
     
-    if not total_price:
-        await c.answer("Ошибка. Выберите тариф заново.", show_alert=True)
-        return
-        
     await c.answer("Создаю платёж...")
     
     try:
