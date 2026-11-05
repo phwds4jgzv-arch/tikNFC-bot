@@ -999,7 +999,7 @@ def create_custom_payment(user_id, plan_key, amount, points):
         "amount": {"value": f"{amount:.2f}", "currency": "RUB"},
         "capture": True,
         "confirmation": {"type": "redirect", "return_url": RETURN_URL},
-        "save_payment_method": True,
+        "save_payment_method": False,
         "description": f"Подписка Сеть ({points} точек)",
         "metadata": {"user_id": user_id, "plan": f"{plan_key}_{points}"}
     }, str(uuid.uuid4()))
