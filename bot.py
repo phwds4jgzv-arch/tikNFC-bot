@@ -463,15 +463,27 @@ async def cb_plans(c: CallbackQuery):
 
 
 @router.callback_query(F.data.startswith("plan:"))
-async def cb_plan(c: CallbackQuery):
+async def cb_plan(c: CallbackQuery, state: FSMContext):
     key = c.data.split(":", 1)[1]
+    
+    # 👇 ЕСЛИ ВЫБРАЛИ СЕТЬ - СРАЗУ СПРАШИВАЕМ КОЛИЧЕСТВО ТОЧЕК
+    if key == "network":
+        await c.message.edit_text(
+            "🏢 <b>Тариф Сеть</b>\n\n"
+            "Напишите цифрой, <b>сколько у вас точек/заведений</b>? (минимум 3)\n\n"
+            "Например: <code>13</code>"
+        )
+        await state.set_state(NetworkStates.waiting_for_points)
+        await c.answer()
+        return
+
+    # 👇 ЕСЛИ ОБЫЧНЫЙ ТАРИФ - ПОКАЗЫВАЕМ ОПИСАНИЕ
     p = PLANS[key]
     text = (
         f"{p['name']}\n\n{p['desc']}\n\n"
         f"💰 <b>{p['price']} ₽/мес</b>\n\n"
         "✅ Первый платёж — сейчас\n"
-        "✅ Далее списание раз в 30 дней (автоматически)\n"
-        f"✅ За {REMINDER_DAYS} дня до списания — уведомление\n"
+        "✅ Далее списание раз в 30 дней\n"
         "✅ Отменить можно в любой момент"
     )
     await c.message.edit_text(text, reply_markup=kb_plan_details(key))
@@ -526,20 +538,33 @@ async def _watch_payment(bot, user_id, payment_id, plan_key, chat_id):
     set_payment_status(payment_id, "succeeded")
     pm_id = getattr(p.payment_method, "id", None)
     sub_id = create_subscription(user_id, plan_key, pm_id)
-    plan = PLANS[plan_key]
     
-    if plan.get("is_recurrent", True):
+    # 👇 УМНАЯ ПРОВЕРКА ДЛЯ СЕТИ
+    if plan_key.startswith("network_"):
+        points = int(plan_key.split("_")[1])
+        price = points * PLANS["network"]["price_per_point"]
+        name = f"Сеть ({points} точек)"
+        is_recurrent = True
+    else:
+        plan = PLANS[plan_key]
+        price = plan["price"]
+        name = plan["name"]
+        is_recurrent = plan.get("is_recurrent", True)
+
+    if is_recurrent:
         next_date = (datetime.now() + timedelta(days=30)).strftime("%d.%m.%Y")
         text = (
             f"🎉 <b>Подписка активирована!</b>\n\n"
-            f"Тариф: {plan['name']}\n"
+            f"Тариф: {name}\n"
+            f"Стоимость: {price} ₽/мес\n"
             f"Следующее списание: <b>{next_date}</b>\n\n"
             "Отменить можно через «Моя подписка» в любой момент."
         )
     else:
         text = (
             f"🎉 <b>Тестовый доступ активирован!</b>\n\n"
-            f"Тариф: {plan['name']}\n"
+            f"Тариф: {name}\n"
+            f"Стоимость: {price} ₽\n"
             "Оплачен 1 месяц. <b>Автопродления не будет.</b>\n\n"
             "Спасибо, что решили попробовать!"
         )
@@ -551,7 +576,7 @@ async def _watch_payment(bot, user_id, payment_id, plan_key, chat_id):
             ADMIN_ID,
             f"💳 <b>Новая подписка!</b>\n"
             f"User: <code>{user_id}</code>\n"
-            f"Тариф: {plan['name']} ({plan['price']} ₽)"
+            f"Тариф: {name} ({price} ₽)"
         )
     except Exception:
         pass
