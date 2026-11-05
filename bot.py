@@ -13,7 +13,8 @@ from datetime import datetime, timedelta
 from dotenv import load_dotenv
 from aiogram import Bot, Dispatcher, F, Router
 from aiogram.types import (
-    Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
+    Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton,
+    WebAppInfo
 )
 from aiogram.filters import CommandStart, Command
 from aiogram.fsm.storage.memory import MemoryStorage
@@ -337,14 +338,16 @@ async def poll_payment(payment_id, timeout_sec=600):
 # ═══════════════════════════════════════════════════════════
 def kb_main():
     return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="💎 Тарифы и подписка",
-                              callback_data="plans")],
-        [InlineKeyboardButton(text="📊 Моя подписка",
-                              callback_data="my_sub")],
-        [InlineKeyboardButton(text="ℹ️ Что входит",
-                              callback_data="info")],
-        [InlineKeyboardButton(text="📄 Оферта",
-                              callback_data="offer")],
+        [InlineKeyboardButton(text="💎 Тарифы и подписка", callback_data="plans")],
+        
+        # 👇 ВОТ ЗДЕСЬ МАГИЯ: вместо callback_data мы используем web_app
+        [InlineKeyboardButton(
+            text="📊 Моя подписка", 
+            web_app=WebAppInfo(url="https://telegram-web-app-tik.netlify.app/tma.html")
+        )],
+        
+        [InlineKeyboardButton(text="ℹ️ Что входит", callback_data="info")],
+        [InlineKeyboardButton(text="📄 Оферта", callback_data="offer")],
     ])
 
 
