@@ -382,14 +382,14 @@ def kb_plans():
             continue
         rows.append([InlineKeyboardButton(
             text=f"{p['name']} — {p['price']} ₽/мес",
-            callback_data=f"plan:{k}"
+            callback_data=f"plan:{k}" # 👈 Вот тут передается 'plan:standard' и т.д.
         )])
     
     network_plan = PLANS["network"]
     rows.append([
         InlineKeyboardButton(
             text=f"🏢 {network_plan['name']} — {network_plan['price_per_point']} ₽/точка", 
-            callback_data="plan:network"
+            callback_data="plan:network" # 👈 Вот тут передается 'plan:network'
         )
     ])
     
@@ -463,10 +463,10 @@ async def cb_plans(c: CallbackQuery):
     await c.message.edit_text(text, reply_markup=kb_plans())
     await c.answer()
     
+@router.callback_query(F.data.startswith("plan:")) # 👈 Ловит всё, что начинается с 'plan:'
 async def cb_plan(c: CallbackQuery, state: FSMContext):
-    key = c.data.split(":", 1)[1]
+    key = c.data.split(":", 1)[1] # Достает 'standard' или 'network'
     
-    # Если выбрали Сеть
     if key == "network":
         await c.message.edit_text(
             "🏢 <b>Тариф Сеть</b>\n\n"
